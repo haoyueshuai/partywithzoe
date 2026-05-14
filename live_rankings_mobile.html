@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>AP Bio — Live Rankings</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --border: #e2e0d8;
+  --text: #1a1a18;
+  --muted: #8a8880;
+  --lv5-bg: #1a4a2e;
+  --lv5-text: #e8f5ee;
+  --lv4-bg: #c8e6c9;
+  --lv4-text: #1b5e20;
+  --lv3-bg: #fff9c4;
+  --lv3-text: #827717;
+  --lv2-bg: #eeeeee;
+  --lv2-text: #616161;
+  --thomas-glow: rgba(26,74,46,0.18);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow-x: hidden; }
+body {
+  background: var(--bg);
+  font-family: 'IBM Plex Sans', sans-serif;
+  padding: env(safe-area-inset-top, 12px) 14px 24px;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+/* ── HEADER ── */
+.header { margin-bottom: 10px; padding-top: 8px; }
+.exam-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.exam-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  min-height: 1.4rem;
+}
+.exam-note {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 400;
+  font-family: 'IBM Plex Mono', monospace;
+  margin-top: 1px;
+}
+
+/* ── PROGRESS ── */
+.progress-track {
+  display: flex;
+  gap: 3px;
+  margin: 10px 0 8px;
+}
+.progress-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background 0.4s;
+}
+.progress-seg.done { background: var(--lv5-bg); }
+.progress-seg.active { background: var(--lv5-bg); opacity: 0.5; }
+
+/* ── CONTROLS ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.btn {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+  min-width: 80px;
+  text-align: center;
+}
+.btn.playing { background: var(--lv5-bg); color: #fff; border-color: var(--lv5-bg); }
+.exam-dots { display: flex; gap: 7px; align-items: center; flex: 1; justify-content: flex-end; }
+.edot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+}
+.edot.active {
+  background: var(--lv5-bg);
+  border-color: var(--lv5-bg);
+  transform: scale(1.3);
+}
+
+/* ── LEGEND ── */
+.legend {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.leg {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  color: var(--muted);
+}
+.leg-sw { width: 16px; height: 8px; border-radius: 2px; }
+
+/* ── T JOURNEY STRIP ── */
+.journey-strip {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow: hidden;
+}
+.jstrip-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.58rem;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+  margin-right: 10px;
+  font-weight: 600;
+}
+.jstrip-nodes { display: flex; align-items: center; flex: 1; gap: 0; overflow: hidden; }
+.jnode {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+  flex: 1; position: relative; z-index: 2;
+  min-width: 0;
+}
+.jnode-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  transition: all 0.4s;
+}
+.jnode-dot.active-node {
+  background: var(--lv5-bg); border-color: var(--lv5-bg);
+  transform: scale(1.5);
+  box-shadow: 0 0 6px rgba(26,74,46,0.4);
+}
+.jnode-dot.past-node { background: var(--lv5-bg); border-color: var(--lv5-bg); }
+.jnode-score {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.55rem; font-weight: 600;
+  color: var(--muted); transition: color 0.4s;
+}
+.jnode-score.active-score { color: var(--lv5-bg); }
+.jnode-rank {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.48rem; color: var(--border); transition: color 0.4s;
+}
+.jnode-rank.active-rank { color: var(--lv5-bg); }
+.jconn {
+  flex: 1; height: 1.5px;
+  background: var(--border);
+  margin-bottom: 16px;
+  transition: background 0.5s;
+  min-width: 4px;
+}
+.jconn.past-conn { background: var(--lv5-bg); opacity: 0.35; }
+
+/* ── RANKING LIST ── */
+#ranking-list { position: relative; }
+.row {
+  position: absolute; left: 0; right: 0;
+  height: 46px;
+  transition: top 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.row-inner {
+  display: flex; align-items: center;
+  width: 100%; height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid transparent;
+  transition: all 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.row-inner.thomas-row {
+  border-color: var(--lv5-bg) !important;
+  box-shadow: 0 2px 10px var(--thomas-glow);
+}
+.rank-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+.name-block {
+  flex: 0 0 52px;
+  padding: 0 6px 0 4px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.score-block {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  width: 40px;
+  text-align: right;
+  padding-right: 6px;
+  flex-shrink: 0;
+}
+.bar-block {
+  flex: 1;
+  padding: 0 8px 0 2px;
+  display: flex;
+  align-items: center;
+}
+.bar-track {
+  width: 100%; height: 5px;
+  background: rgba(0,0,0,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.level-chip {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.55rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-right: 6px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.thomas-tag {
+  font-size: 0.85rem;
+  color: #f59e0b;
+  filter: drop-shadow(0 0 3px rgba(245,158,11,0.8));
+  line-height: 1;
+}
+
+/* ── STATS BAR ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.stat-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 6px;
+}
+.stat-item-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.5rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.stat-item-val {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  transition: all 0.4s;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="exam-label">AP Biology 2025–26</div>
+  <div class="exam-name" id="exam-name">—</div>
+  <div class="exam-note" id="exam-note">—</div>
+</div>
+
+<div class="progress-track" id="progress-track"></div>
+
+<div class="controls">
+  <button class="btn playing" id="play-btn" onclick="togglePlay()">▶ Play</button>
+  <div class="exam-dots" id="exam-dots"></div>
+</div>
+
+<div class="legend">
+  <div class="leg"><div class="leg-sw" style="background:#1a4a2e"></div>AP 5 (≥80%)</div>
+  <div class="leg"><div class="leg-sw" style="background:#c8e6c9;border:1px solid #a5d6a7"></div>AP 4 (60–79%)</div>
+  <div class="leg"><div class="leg-sw" style="background:#fff9c4;border:1px solid #f0d060"></div>AP 3 (50–59%)</div>
+  <div class="leg"><div class="leg-sw" style="background:#eee;border:1px solid #ccc"></div>Below</div>
+</div>
+
+<div class="journey-strip">
+  <div class="jstrip-label">T ★</div>
+  <div class="jstrip-nodes" id="jstrip"></div>
+</div>
+
+<div id="ranking-list"></div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="stat-item-label">Avg</div><div class="stat-item-val" id="stat-avg">—</div></div>
+  <div class="stat-item"><div class="stat-item-label">T rank</div><div class="stat-item-val" id="stat-thomas">—</div></div>
+  <div class="stat-item"><div class="stat-item-label">AP 5</div><div class="stat-item-val" id="stat-lv5">—</div></div>
+  <div class="stat-item"><div class="stat-item-label">Range</div><div class="stat-item-val" id="stat-range">—</div></div>
+</div>
+
+<script>
+const EXAMS = [
+  { label:'Fall Monthly Test', note:'Unit 5 · Chapter by chapter', max:100, students:[
+    {n:'Sa',s:100},{n:'A',s:90},{n:'G',s:82},{n:'Et',s:79},{n:'Se',s:79},
+    {n:'T',s:71},{n:'Cl',s:67},{n:'Ch',s:67},{n:'Jo',s:63},{n:'Iv',s:63},
+    {n:'Mar',s:62},{n:'Ji',s:60},{n:'Kik',s:56},{n:'Ca',s:54},{n:'Ea',s:51},
+    {n:'Er',s:48},{n:'Kim',s:44},{n:'Mart',s:27},{n:'R',s:27}
+  ]},
+  { label:'Fall Midterm', note:'Cumulative · Fall semester', max:104, students:[
+    {n:'A',s:100},{n:'Sa',s:99},{n:'Cl',s:81},{n:'Et',s:80},{n:'Se',s:80},
+    {n:'Ji',s:79},{n:'G',s:74},{n:'Ch',s:72},{n:'T',s:73},
+    {n:'Is',s:69},{n:'Ca',s:69},{n:'Jo',s:66},{n:'Er',s:61},
+    {n:'Mar',s:50},{n:'Kim',s:47},{n:'R',s:35}
+  ]},
+  { label:'Pre-Christmas', note:'Units 1,2,4,5,6 · First AP-style exam', max:100, students:[
+    {n:'T',s:90},{n:'Sa',s:89},{n:'Ch',s:71},{n:'Se',s:64},
+    {n:'Cl',s:58},{n:'Is',s:51},{n:'G',s:49},{n:'Et',s:42},
+    {n:'Ji',s:40},{n:'Ca',s:25},{n:'Mar',s:23},{n:'Jo',s:22},{n:'Kim',s:24}
+  ]},
+  { label:'Spring Final Exam', note:'MCQ + FRQ', max:111, students:[
+    {n:'Cl',s:78},{n:'Sa',s:76},{n:'Et',s:76},{n:'Ch',s:73},
+    {n:'Se',s:70},{n:'T',s:70},{n:'G',s:62},{n:'Jo',s:59},
+    {n:'Is',s:51},{n:'Ca',s:46},{n:'Mar',s:46},{n:'Ji',s:43},
+    {n:'Er',s:38},{n:'R',s:30},{n:'Kim',s:24}
+  ]},
+  { label:'After Winter Break', note:'Spring semester · Return assessment', max:108, students:[
+    {n:'Sa',s:94},{n:'Et',s:80},{n:'T',s:73},{n:'Cl',s:66},
+    {n:'Is',s:66},{n:'Se',s:63},{n:'Ca',s:61},{n:'Ji',s:59},
+    {n:'Er',s:59},{n:'Jo',s:55},{n:'G',s:54},{n:'Mar',s:31}
+  ]},
+  { label:'Unit 7 Test', note:'Big chapter test', max:100, students:[
+    {n:'T',s:84},{n:'Et',s:84},{n:'Cl',s:81},{n:'Sa',s:75},
+    {n:'G',s:75},{n:'Se',s:72},{n:'Is',s:69},{n:'Mar',s:63},
+    {n:'Er',s:60},{n:'Ch',s:60},{n:'Ji',s:54},{n:'Ca',s:39}
+  ]},
+  { label:'Spring Midterm', note:'Cumulative · last test before AP exam', max:120, students:[
+    {n:'Sa',s:102.63},{n:'Is',s:102.14},{n:'T',s:98.89},{n:'Et',s:91.40},
+    {n:'G',s:89.16},{n:'Cl',s:87.14},{n:'Se',s:84.00},{n:'Ch',s:83.65},
+    {n:'Ca',s:74.90},{n:'Jo',s:73.90},{n:'Kim',s:72.21},{n:'Mar',s:66.92},
+    {n:'Ji',s:61.68},{n:'Er',s:48.21}
+  ]},
+];
+
+const THOMAS_JOURNEY = [
+  {rank:6,score:71},{rank:9,score:76},{rank:2,score:90},
+  {rank:6,score:78},{rank:3,score:79},{rank:2,score:84},{rank:3,score:99},
+];
+
+EXAMS.forEach(e => {
+  e.students = e.students.map(s => ({...s, pct: Math.round(s.s/e.max*100)}));
+  e.sorted = [...e.students].sort((a,b) => b.pct-a.pct);
+});
+
+function getLevel(pct) {
+  if (pct>=80) return 5;
+  if (pct>=60) return 4;
+  if (pct>=50) return 3;
+  return 2;
+}
+function getLvStyle(lv) {
+  switch(lv) {
+    case 5: return {bg:'#1a4a2e',text:'#e8f5ee',bar:'#2d7a4f',chip:'AP 5'};
+    case 4: return {bg:'#c8e6c9',text:'#1b5e20',bar:'#66bb6a',chip:'AP 4'};
+    case 3: return {bg:'#fff9c4',text:'#827717',bar:'#fdd835',chip:'AP 3'};
+    default: return {bg:'#eeeeee',text:'#616161',bar:'#bdbdbd',chip:'—'};
+  }
+}
+
+// Build rows
+const allNames = [...new Set(EXAMS.flatMap(e=>e.students.map(s=>s.n)))];
+const rowMap = {};
+const list = document.getElementById('ranking-list');
+allNames.forEach(name => {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.id = `row-${name}`;
+  const isT = name==='T';
+  row.innerHTML = `
+    <div class="row-inner${isT?' thomas-row':''}" id="inner-${name}">
+      <div class="rank-num" id="rnum-${name}">—</div>
+      <div class="name-block" id="name-${name}">${name}${isT?'<span class="thomas-tag">★</span>':''}</div>
+      <div class="score-block" id="score-${name}">—</div>
+      <div class="bar-block"><div class="bar-track"><div class="bar-fill" id="bar-${name}" style="width:0%"></div></div></div>
+      <div class="level-chip" id="chip-${name}">—</div>
+    </div>`;
+  list.appendChild(row);
+  rowMap[name] = row;
+});
+
+// Dots + progress
+const dotsEl = document.getElementById('exam-dots');
+const progressEl = document.getElementById('progress-track');
+EXAMS.forEach((e,i) => {
+  const dot = document.createElement('div');
+  dot.className='edot'; dot.id=`edot-${i}`;
+  dot.onclick = ()=>{stopPlay();goToExam(i);};
+  dotsEl.appendChild(dot);
+  const seg = document.createElement('div');
+  seg.className='progress-seg'; seg.id=`pseg-${i}`;
+  progressEl.appendChild(seg);
+});
+
+// Journey strip
+function buildJStrip() {
+  const strip = document.getElementById('jstrip');
+  strip.innerHTML = '';
+  THOMAS_JOURNEY.forEach((t,i) => {
+    const node = document.createElement('div');
+    node.className='jnode';
+    node.innerHTML=`<div class="jnode-score" id="jscore-${i}">${t.score}</div>
+      <div class="jnode-dot" id="jdot-${i}"></div>
+      <div class="jnode-rank" id="jrank-${i}">#${t.rank}</div>`;
+    strip.appendChild(node);
+    if (i<THOMAS_JOURNEY.length-1) {
+      const conn=document.createElement('div');
+      conn.className='jconn'; conn.id=`jconn-${i}`;
+      strip.appendChild(conn);
+    }
+  });
+}
+buildJStrip();
+
+function updateJStrip(idx) {
+  THOMAS_JOURNEY.forEach((t,i) => {
+    const dot=document.getElementById(`jdot-${i}`);
+    const score=document.getElementById(`jscore-${i}`);
+    const rank=document.getElementById(`jrank-${i}`);
+    const conn=document.getElementById(`jconn-${i}`);
+    if (i<idx) {
+      dot.className='jnode-dot past-node';
+      score.className='jnode-score'; rank.className='jnode-rank';
+      if(conn) conn.className='jconn past-conn';
+    } else if (i===idx) {
+      dot.className='jnode-dot active-node';
+      score.className='jnode-score active-score';
+      rank.className='jnode-rank active-rank';
+    } else {
+      dot.className='jnode-dot'; score.className='jnode-score';
+      rank.className='jnode-rank';
+      if(conn) conn.className='jconn';
+    }
+  });
+}
+
+const ROW_H = 46;
+let currentExam=-1, playTimer=null, isPlaying=false;
+
+function goToExam(idx) {
+  currentExam=idx;
+  const exam=EXAMS[idx];
+  const sorted=exam.sorted;
+  const maxPct=Math.max(...sorted.map(s=>s.pct));
+
+  document.getElementById('exam-name').textContent=exam.label;
+  document.getElementById('exam-note').textContent=exam.note;
+
+  EXAMS.forEach((_,i)=>{
+    document.getElementById(`edot-${i}`).classList.toggle('active',i===idx);
+    document.getElementById(`pseg-${i}`).className='progress-seg'+(i<idx?' done':i===idx?' active':'');
+  });
+
+  allNames.forEach(n=>{ rowMap[n].style.opacity='0'; rowMap[n].style.pointerEvents='none'; });
+
+  sorted.forEach((s,rank)=>{
+    const name=s.n;
+    const row=rowMap[name];
+    const lv=getLevel(s.pct);
+    const style=getLvStyle(lv);
+    const isT=name==='T';
+
+    row.style.top=(rank*ROW_H)+'px';
+    row.style.opacity='1';
+    row.style.pointerEvents='auto';
+
+    const inner=document.getElementById(`inner-${name}`);
+    inner.style.background=style.bg;
+    inner.style.borderColor=isT?'#1a4a2e':'transparent';
+
+    document.getElementById(`rnum-${name}`).textContent=`#${rank+1}`;
+    document.getElementById(`rnum-${name}`).style.color=style.text;
+    document.getElementById(`name-${name}`).style.color=style.text;
+    document.getElementById(`score-${name}`).textContent=s.pct+'%';
+    document.getElementById(`score-${name}`).style.color=style.text;
+
+    const bar=document.getElementById(`bar-${name}`);
+    bar.style.background=style.bar;
+    setTimeout(()=>{ bar.style.width=(s.pct/maxPct*100)+'%'; },50);
+
+    const chip=document.getElementById(`chip-${name}`);
+    chip.textContent=style.chip;
+    chip.style.background=lv===5?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.08)';
+    chip.style.color=style.text;
+  });
+
+  list.style.height=(sorted.length*ROW_H+8)+'px';
+
+  const avg=Math.round(sorted.reduce((a,s)=>a+s.pct,0)/sorted.length);
+  const thomas=sorted.find(s=>s.n==='T');
+  const tRank=thomas?sorted.indexOf(thomas)+1:null;
+  const lv5c=sorted.filter(s=>getLevel(s.pct)===5).length;
+  const range=sorted[0].pct-sorted[sorted.length-1].pct;
+
+  document.getElementById('stat-avg').textContent=avg+'%';
+  document.getElementById('stat-thomas').textContent=thomas?`#${tRank}/${sorted.length}`:'—';
+  document.getElementById('stat-lv5').textContent=lv5c;
+  document.getElementById('stat-range').textContent=range+'pt';
+
+  updateJStrip(idx);
+}
+
+function togglePlay() {
+  isPlaying ? stopPlay() : startPlay();
+}
+function startPlay() {
+  isPlaying=true;
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  document.getElementById('play-btn').classList.add('playing');
+  if (currentExam>=EXAMS.length-1) currentExam=-1;
+  advance();
+}
+function advance() {
+  if (!isPlaying) return;
+  const next=currentExam+1;
+  if (next>=EXAMS.length) { stopPlay(); return; }
+  goToExam(next);
+  playTimer=setTimeout(advance,1500);
+}
+function stopPlay() {
+  isPlaying=false;
+  clearTimeout(playTimer);
+  document.getElementById('play-btn').textContent='▶ Play';
+  document.getElementById('play-btn').classList.remove('playing');
+}
+
+goToExam(0);
+setTimeout(startPlay,600);
+</script>
+</body>
+</html>
